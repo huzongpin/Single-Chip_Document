@@ -1,0 +1,31 @@
+看门狗的作用是系统CPU正常工作时定时给看门狗喂狗，复位定时器，如果系统出问题，没有给看门狗喂狗，看门狗就由于超时将CPU复位。
+系统用初始化后注册看门狗中断
+request_irq(WDT0_ACCSCSSNBARK_INT, wdog_bark_handler, 0, "apps_wdog_bark", NULL);
+和初始化看门狗的超时时间bark time，
+__raw_writel(timeout, msm_tmr0_base + WDT0_BARK_TIME);
+__raw_writel(timeout + 3*WDT_HZ, msm_tmr0_base + WDT0_BITE_TIME);
+复位看门狗，使能看门狗和中断极性。
+__raw_writel(1, msm_tmr0_base + WDT0_EN);
+__raw_writel(1, msm_tmr0_base + WDT0_RST);
+enable_percpu_irq(WDT0_ACCSCSSNBARK_INT, IRQ_TYPE_EDGE_RISING);
+并且初始化和启动一个定时器，比如10秒一次，
+schedule_delayed_work_on(0, &dogwork_struct, delay_time);
+static DECLARE_DELAYED_WORK(dogwork_struct, pet_watchdog_work);
+static DECLARE_WORK(init_dogwork_struct, init_watchdog_work);
+static struct msm_watchdog_pdata msm_watchdog_pdata = {
+.pet_time = 10000,
+.bark_time = 11000,
+.has_secure = true,
+.needs_expired_enable = true,
+};
+delay_time = msecs_to_jiffies(pdata->pet_time);
+schedule_work_on(0, &init_dogwork_struct);
+定时器定时时间到了对定时器复位pet dog 和重新启动定时器。
+static void pet_watchdog_work(struct work_struct *work)
+{
+pet_watchdog();
+if (enable)
+schedule_delayed_work_on(0, &dogwork_struct, delay_time);
+}
+如果系统出问题了，没有办法执行定时器的回到函数，那么看门狗就产生中断，执行中断服务程序static irqreturn_t wdog_bark_handler(int irq, void *dev_id)，
+执行panic。 panic("Apps watchdog bark received!");
