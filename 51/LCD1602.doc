@@ -16,4 +16,94 @@ LCD1602:
     1.11 写指令06H，显示光标移动位置
     1.12 写指令0CH，显示及光标位置
 
-    
+    /********/
+    #include<reg52.h>
+#define uchar unsigned char
+#define uint unsigned int
+
+sbit rs=P2^4;
+sbit rw=P2^5;
+sbit e=P2^6;
+uchar table1[]="  hello,world!";
+uchar table2[]="LCD1602 test ok!";
+
+
+/********ÑÓÊ±º¯Êý--12M¾§ÕñÆµÂÊÏÂ*******/
+//´óÔ¼50usÑÓÊ±
+void delay_50us(uint t)  //T ´óÐ©²Å»á±È½Ï×¼
+{
+	uchar j,k;
+	for(j=t;j>0;j--)
+		for(k=19;k>0;k--);
+}	
+
+//´óÔ¼50msÑÓÊ±
+void delay_50ms(uint t)
+{
+	uchar j,k;
+	for(j=t;j>0;j--)
+		for(k=6245;k>0;k--);
+}
+
+void write_com(uchar com)
+{	
+	e=0;
+	rs=0;
+	rw=0;
+	P0=com;  //ÒòÎª1602½ÓÔÚP0
+	delay_50us(10);
+	e=1;
+	delay_50us(20);
+	e=0;	
+}
+
+void write_data(uchar dat)
+{
+	e=0;
+	rs=1;
+	rw=0;
+	P0=dat;  //ÒòÎª1602½ÓÔÚP0
+	delay_50us(10);
+	e=1;
+	delay_50us(20);
+	e=0;
+}
+
+void init(void)
+{
+	delay_50us(300);
+	write_com(0x38);
+	delay_50us(100);
+	write_com(0x38);
+	delay_50us(100);
+	write_com(0x38);
+	delay_50us(100);
+	write_com(0x38);
+	write_com(0x38);
+	write_com(0x08);
+	write_com(0x01);
+	write_com(0x06);
+	write_com(0x0C);
+
+	
+}
+
+void main()
+{	
+	uchar j;
+	init();
+	write_com(0x80);
+	for(j=0;j<16;j++)
+	{
+	write_data(table1[j]);
+	delay_50us(10);
+	}
+	write_com(0x80+0x40);
+	for(j=0;j<16;j++)
+	{
+	write_data(table2[j]);
+	delay_50us(10);
+			}
+	while(1);
+}
+    /*******/
