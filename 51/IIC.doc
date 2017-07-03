@@ -17,3 +17,179 @@ IIC串行总线：
      写入过程：   固定部分1010，A0,A1,A2引脚接高低电平得到确定的3位编码。形成7位编码即为该器件的地址码。
      读出过程：
      24C02电路。
+     
+/*单片机重启计次数*/
+#include<reg52.h>
+#include<intrins.h>
+#define uchar unsigned char
+#define uint unsigned int
+
+unsigned char code smg_duan[]={0x3f,0x06,0x5b,0x4f,0x66,0x6d,0x7d,0x07,0x7f,0x6f}; //¶ÎÑ¡
+unsigned char code smg_wei[]={0x08,0x18,0x28,0x38,0x48,0x58,0x68,0x78};//Î»Ñ¡
+sbit sda=P2^1;
+sbit scl=P2^0;
+
+void start(void);
+void stop(void);
+void ack(void);
+void noack(void);
+void iicwr_byte(uchar dat);
+uchar iicre_byte(void);
+void delay(void);
+void delay1(void);
+void write_byte(uchar add,uchar dat);
+uchar read_byte(uchar add);
+//////////////////////////////////
+void delay1(void)
+{
+	uint aa=30000;
+	while(aa--);
+}
+
+void delay(void)
+{
+    _nop();  _nop();  _nop();  _nop();
+	_nop();  _nop();  _nop();  _nop();
+}
+
+void start(void)
+{
+	sda=1;
+	delay();
+	scl=1;
+	delay();
+	sda=0;
+	delay();
+	
+}
+
+void stop(void)
+	{
+	sda=0;
+	delay();
+	scl=1;
+	delay();
+	sda=1;
+	delay();
+	
+}
+void ack(void)
+{	
+	uchar i;
+	scl=1;
+	delay();
+	while((sda==1)&&(i<200)) i++;
+	scl=0;
+	delay();
+}	
+
+void noack(void)
+{
+	sda=1;
+	delay();
+	scl=1;
+	delay();
+	scl=0;
+	delay();
+	
+}
+void init(void)
+{
+    sda=1;
+	scl=1;
+}
+
+void iicwr_byte(uchar dat)
+{
+	uchar i;
+	scl=0;
+	for(i=0;i<8;i++)
+	{
+		if(dat&0x80)
+		{
+		sda=1;
+		}
+		else
+		{
+			sda=0;
+		}
+		dat=dat<<1;
+		delay();
+		scl=1;
+		delay();
+		scl=0;
+		delay();
+	}
+	sda=1;
+	delay();
+}
+
+uchar iicre_byte(void)
+{
+	uchar i;
+	uchar dat;
+	scl=0;
+	delay();
+	sda=1;
+	delay();
+	for(i=0;i<8;i++)
+	{
+		scl=1;
+		delay();
+		dat=dat<<1;
+		if(sda)
+		{
+			dat++;
+		}
+		scl=0;
+		delay();
+	}
+	return dat;
+}
+/*********main********/
+void main()
+{
+	uchar k;
+	k=read_byte(7);
+	k=k%10;
+	P1=smg_duan[k];
+	k++;
+	write_byte(7,k);
+	
+	while(1);
+		
+}
+
+/********************/
+void write_byte(uchar add,uchar dat)
+{
+	init();
+	start();
+	iicwr_byte(0xa0);
+	ack();
+	iicwr_byte(add);
+	ack();
+	iicwr_byte(dat);
+	ack();
+	stop();
+}
+
+uchar read_byte(uchar add)
+{
+	uint a;
+	init();
+	start();
+	iicwr_byte(0xa0);
+	ack();
+	iicwr_byte(add);
+	ack();
+	start();
+	iicwr_byte(0xa1);
+	ack();
+	a=iicre_byte();
+	noack();
+	stop();
+	return a;
+}
+
+
